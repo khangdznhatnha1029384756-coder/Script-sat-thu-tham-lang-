@@ -1,10 +1,10 @@
 --[[
-    Hffiuff Hub 🗿🇻🇳 - V6 RAYFIELD EDITION
+    Hffiuff Hub 🗿🇻🇳 - V7 REMAKE
     Owner: khangdz by Hffiuff 🗿🇻🇳
-    Status: Ultra Optimized & Anti-Ban Max
+    Update: Fix Target Kill Logic, Safe Teleport, Removed Floating Button
 ]]
 
--- 1. HỆ THỐNG BẢO VỆ (ANTI-BAN)
+-- 1. ANTI-BAN
 local MT = getrawmetatable(game)
 local OldNamecall = MT.__namecall
 setreadonly(MT, false)
@@ -22,29 +22,23 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Hffiuff Hub 🗿🇻🇳",
    LoadingTitle = "khangdz by Hffiuff 🗿🇻🇳",
-   LoadingSubtitle = "Premium Script",
-   ConfigurationSaving = {
-      Enabled = true,
-      Folder = "HffiuffData",
-      FileName = "Config"
-   },
-   KeySystem = false -- Tắt key để bạn dùng cho nhanh
+   LoadingSubtitle = "V7 - Target Kill Remake",
+   ConfigurationSaving = { Enabled = true, Folder = "HffiuffData", FileName = "Config" },
+   KeySystem = false
 })
 
--- THÔNG BÁO KHI VÀO GAME
 Rayfield:Notify({
    Title = "Hffiuff Hub 🗿🇻🇳",
-   Content = "Chào mừng khangdz đã trở lại!",
+   Content = "Đã làm lại Target Kill & Sửa lỗi kẹt Map!",
    Duration = 5,
    Image = 4483345998,
 })
 
 -- --- TAB CHIẾN ĐẤU (COMBAT) ---
 local CombatTab = Window:CreateTab("Combat", 4483345998)
-local CombatSection = CombatTab:CreateSection("Hitbox & Target")
 
 CombatTab:CreateToggle({
-   Name = "Bật Hitbox (Custom)",
+   Name = "Bật Hitbox",
    CurrentValue = false,
    Callback = function(Value)
       _G.HitboxActive = Value
@@ -52,9 +46,11 @@ CombatTab:CreateToggle({
          while _G.HitboxActive do
             for _, v in pairs(game.Players:GetPlayers()) do
                if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                  v.Character.HumanoidRootPart.Size = Vector3.new(_G.HSize or 10, _G.HSize or 10, _G.HSize or 10)
-                  v.Character.HumanoidRootPart.Transparency = 0.7
-                  v.Character.HumanoidRootPart.CanCollide = false
+                  local root = v.Character.HumanoidRootPart
+                  root.Size = Vector3.new(_G.HSize or 10, _G.HSize or 10, _G.HSize or 10)
+                  root.Transparency = 0.6
+                  root.CanCollide = false
+                  root.Massless = true -- Giúp server không bị lỗi vật lý khi hitbox to
                end
             end
             task.wait(0.5)
@@ -67,30 +63,59 @@ CombatTab:CreateSlider({
    Name = "Kích thước Hitbox",
    Range = {2, 50},
    Increment = 1,
-   Suffix = "Size",
+   Suffix = " Size",
    CurrentValue = 10,
    Callback = function(Value) _G.HSize = Value end,
 })
 
--- --- TAB AUTO KILL ---
+-- --- TAB AUTO KILL (LÀM LẠI LOGIC) ---
 local AutoTab = Window:CreateTab("Auto Kill", 4483345998)
 
 AutoTab:CreateToggle({
-   Name = "Target Kill Siêu Tốc (0.3s)",
+   Name = "Target Kill (Giết Xong Mới Bay)",
    CurrentValue = false,
    Callback = function(Value)
       _G.TargetKill = Value
       task.spawn(function()
          while _G.TargetKill do
-            for _, v in pairs(game.Players:GetPlayers()) do
-               if _G.TargetKill and v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
-                  game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
-                  local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                  if tool then tool:Activate() end
-                  task.wait(0.3)
-               end
+            local lp = game.Players.LocalPlayer
+            local char = lp.Character
+            
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                for _, v in pairs(game.Players:GetPlayers()) do
+                    if not _G.TargetKill then break end -- Dừng ngay nếu tắt toggle
+                    
+                    -- Kiểm tra xem địch có tồn tại và còn sống không
+                    if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") then
+                        local enemyHum = v.Character.Humanoid
+                        local enemyRoot = v.Character.HumanoidRootPart
+                        
+                        if enemyHum.Health > 0 then
+                            -- KHÓA MỤC TIÊU: Chém đến khi máu địch = 0
+                            while _G.TargetKill and enemyHum.Health > 0 and v.Character and char:FindFirstChild("HumanoidRootPart") do
+                                
+                                -- 1. Dịch chuyển an toàn (Gần hơn và cao hơn một chút để không kẹt tường)
+                                char.HumanoidRootPart.CFrame = enemyRoot.CFrame * CFrame.new(0, 1.5, 1.5)
+                                
+                                -- 2. Tự động lấy vũ khí ra nếu chưa cầm
+                                local tool = char:FindFirstChildOfClass("Tool")
+                                if not tool then
+                                    tool = lp.Backpack:FindFirstChildOfClass("Tool")
+                                    if tool then tool.Parent = char end
+                                end
+                                
+                                -- 3. Chém liên tục
+                                if tool then
+                                    tool:Activate()
+                                end
+                                
+                                task.wait(0.1) -- Tốc độ chém liên tục
+                            end
+                        end
+                    end
+                end
             end
-            task.wait(0.5)
+            task.wait(0.5) -- Đợi một chút trước khi quét vòng lặp mới
          end
       end)
    end,
@@ -142,29 +167,3 @@ VisualTab:CreateToggle({
       end
    end,
 })
-
--- --- NÚT NỔI ẨN/HIỆN ---
-local function CreateMobileToggle()
-    if game.CoreGui:FindFirstChild("HffiuffToggle") then game.CoreGui.HffiuffToggle:Destroy() end
-    local ScreenGui = Instance.new("ScreenGui")
-    local ToggleButton = Instance.new("TextButton")
-    local UICorner = Instance.new("UICorner")
-    ScreenGui.Name = "HffiuffToggle"
-    ScreenGui.Parent = game.CoreGui
-    ToggleButton.Name = "ToggleButton"
-    ToggleButton.Parent = ScreenGui
-    ToggleButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    ToggleButton.Position = UDim2.new(0, 15, 0.4, 0)
-    ToggleButton.Size = UDim2.new(0, 50, 0, 50)
-    ToggleButton.Text = "🗿"
-    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    ToggleButton.TextSize = 25
-    ToggleButton.Draggable = true
-    UICorner.CornerRadius = UDim.new(0, 25)
-    UICorner.Parent = ToggleButton
-    ToggleButton.MouseButton1Click:Connect(function()
-        local vim = game:GetService("VirtualInputManager")
-        vim:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
-    end)
-end
-CreateMobileToggle()
