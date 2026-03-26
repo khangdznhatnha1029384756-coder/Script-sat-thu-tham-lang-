@@ -1,70 +1,53 @@
 --[[
-    Hffiuff Hub 🗿🇻🇳 - V8 TOTAL FIX
+    Hffiuff Hub 🗿🇻🇳 - V9 ULTIMATE ASSASSIN
     Owner: khangdz by Hffiuff 🗿🇻🇳
-    Fix: Hitbox Reset, Target Kill Logic, Backstab Teleport, ESP Nametag
+    Fix: Real Hitbox, Auto-Reconnect Target, Match Persistence
 ]]
-
-local MT = getrawmetatable(game)
-local OldNamecall = MT.__namecall
-setreadonly(MT, false)
-MT.__namecall = newcclosure(function(self, ...)
-    local Method = getnamecallmethod()
-    if Method == "FireServer" and (tostring(self):find("Ban") or tostring(self):find("Check")) then return nil end
-    return OldNamecall(self, ...)
-end)
-setreadonly(MT, true)
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Hffiuff Hub 🗿🇻🇳",
    LoadingTitle = "khangdz by Hffiuff 🗿🇻🇳",
-   LoadingSubtitle = "V8 - The Perfect Assassin",
+   LoadingSubtitle = "V9 - Đánh Xuyên Trận",
    ConfigurationSaving = { Enabled = true, Folder = "HffiuffData", FileName = "Config" },
    KeySystem = false
 })
 
-Rayfield:Notify({
-   Title = "Hffiuff Hub 🗿🇻🇳",
-   Content = "Đã fix: Hitbox, Teleport sau lưng, ESP mới!",
-   Duration = 5,
-   Image = 4483345998,
-})
+-- --- HÀM TỰ ĐỘNG CẬP NHẬT KHI HỒI SINH (Xuyên Trận) ---
+local function GetCharacter()
+    return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+end
 
--- --- TAB CHIẾN ĐẤU (HITBOX FIX) ---
+-- --- TAB CHIẾN ĐẤU (REAL HITBOX) ---
 local CombatTab = Window:CreateTab("Combat", 4483345998)
 
 CombatTab:CreateToggle({
-   Name = "Bật Hitbox",
+   Name = "Bật Hitbox (Real Hit)",
    CurrentValue = false,
    Callback = function(Value)
       _G.HitboxActive = Value
-      
-      if _G.HitboxActive then
-          task.spawn(function()
-             while _G.HitboxActive do
-                for _, v in pairs(game.Players:GetPlayers()) do
-                   if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                      local root = v.Character.HumanoidRootPart
-                      root.Size = Vector3.new(_G.HSize or 10, _G.HSize or 10, _G.HSize or 10)
-                      root.Transparency = 0.6
-                      root.CanCollide = false
-                   end
-                end
-                task.wait(0.5)
-             end
-          end)
-      else
-          -- FIX: Khi tắt, lập tức thu nhỏ Hitbox về bình thường (tàng hình)
-          for _, v in pairs(game.Players:GetPlayers()) do
-              if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+      task.spawn(function()
+         while _G.HitboxActive do
+            for _, v in pairs(game.Players:GetPlayers()) do
+               if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                   local root = v.Character.HumanoidRootPart
-                  root.Size = Vector3.new(2, 2, 1) -- Kích thước mặc định của Roblox
-                  root.Transparency = 1 -- Tàng hình như mặc định
-                  root.CanCollide = true
-              end
-          end
-      end
+                  root.Size = Vector3.new(_G.HSize or 15, _G.HSize or 15, _G.HSize or 15)
+                  root.Transparency = 0.7
+                  root.CanCollide = false
+                  root.CanTouch = true -- ÉP SERVER NHẬN VA CHẠM
+               end
+            end
+            task.wait(1)
+         end
+         -- Dọn dẹp khi tắt
+         for _, v in pairs(game.Players:GetPlayers()) do
+            if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                v.Character.HumanoidRootPart.Size = Vector3.new(2,2,1)
+                v.Character.HumanoidRootPart.Transparency = 1
+            end
+         end
+      end)
    end,
 })
 
@@ -73,132 +56,95 @@ CombatTab:CreateSlider({
    Range = {2, 50},
    Increment = 1,
    Suffix = " Size",
-   CurrentValue = 10,
+   CurrentValue = 15,
    Callback = function(Value) _G.HSize = Value end,
 })
 
--- --- TAB AUTO KILL (TELEPORT SAU LƯNG + TẮT LÀ TẮT) ---
+-- --- TAB AUTO KILL (AUTO RE-TARGET XUYÊN TRẬN) ---
 local AutoTab = Window:CreateTab("Auto Kill", 4483345998)
 
-AutoTab:CreateToggle({
-   Name = "Target Kill (Backstab - Áp sát lưng)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.TargetKill = Value
-      task.spawn(function()
-         while _G.TargetKill do
+local function StartKillLoop()
+    task.spawn(function()
+        while _G.TargetKill do
             local lp = game.Players.LocalPlayer
-            local char = lp.Character
+            local char = GetCharacter()
+            local root = char:WaitForChild("HumanoidRootPart", 5)
             
-            if char and char:FindFirstChild("HumanoidRootPart") then
+            if root then
                 for _, v in pairs(game.Players:GetPlayers()) do
-                    if not _G.TargetKill then break end -- TẮT LÀ DỪNG NGAY LẬP TỨC
+                    if not _G.TargetKill then break end
                     
                     if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") then
-                        local enemyHum = v.Character.Humanoid
-                        local enemyRoot = v.Character.HumanoidRootPart
+                        local eHum = v.Character.Humanoid
+                        local eRoot = v.Character.HumanoidRootPart
                         
-                        if enemyHum.Health > 0 then
-                            -- KHÓA MỤC TIÊU TỚI CHẾT
-                            while _G.TargetKill and enemyHum.Health > 0 and v.Character and char:FindFirstChild("HumanoidRootPart") do
+                        if eHum.Health > 0 then
+                            -- KHÓA CHẾT MỤC TIÊU
+                            while _G.TargetKill and eHum.Health > 0 and v.Character and char:FindFirstChild("HumanoidRootPart") do
+                                -- Teleport ra sau lưng và thấp xuống một chút để chém trúng
+                                char.HumanoidRootPart.CFrame = eRoot.CFrame * CFrame.new(0, 0, 2.5)
                                 
-                                -- FIX: Teleport chính xác ra sau lưng địch (trục Z) và quay mặt vào địch
-                                local behindPosition = (enemyRoot.CFrame * CFrame.new(0, 0, 3)).Position
-                                char.HumanoidRootPart.CFrame = CFrame.new(behindPosition, enemyRoot.Position)
-                                
-                                -- Lấy vũ khí ra
-                                local tool = char:FindFirstChildOfClass("Tool")
-                                if not tool then
-                                    tool = lp.Backpack:FindFirstChildOfClass("Tool")
-                                    if tool then tool.Parent = char end
+                                local tool = char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+                                if tool then
+                                    if tool.Parent ~= char then tool.Parent = char end
+                                    tool:Activate()
                                 end
-                                
-                                -- Chém
-                                if tool then tool:Activate() end
-                                
-                                task.wait(0.05) -- Chém cực nhanh
+                                task.wait(0.05)
                             end
                         end
                     end
                 end
             end
             task.wait(0.5)
-         end
-      end)
-   end,
-})
+        end
+    end)
+end
 
--- --- TAB SHOP (AUTO MỞ HỘP) ---
-local ShopTab = Window:CreateTab("Shop", 4483345998)
-
-ShopTab:CreateToggle({
-   Name = "Auto Mở Hộp (Spam)",
+AutoTab:CreateToggle({
+   Name = "Target Kill (Đánh Xuyên Trận)",
    CurrentValue = false,
    Callback = function(Value)
-      _G.AutoOpen = Value
-      task.spawn(function()
-         while _G.AutoOpen do
-            -- Dùng pcall để script không bị lỗi nếu game không có remote "OpenCrate"
-            pcall(function()
-                local rs = game:GetService("ReplicatedStorage")
-                if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("Shop") then
-                    rs.Remotes.Shop.OpenCrate:InvokeServer("Skin Crate")
-                end
-            end)
-            task.wait(1)
-         end
-      end)
+      _G.TargetKill = Value
+      if Value then
+          StartKillLoop()
+      end
    end,
 })
 
--- --- TAB VISUAL (ESP MỚI - 100% NHÌN THẤY) ---
+-- --- TỰ ĐỘNG KÍCH HOẠT LẠI KHI SANG TRẬN MỚI ---
+game.Players.LocalPlayer.CharacterAdded:Connect(function()
+    if _G.TargetKill then
+        task.wait(2) -- Đợi load map
+        StartKillLoop()
+    end
+end)
+
+-- --- TAB VISUAL (NAME TAG) ---
 local VisualTab = Window:CreateTab("Visual", 4483345998)
 
 VisualTab:CreateToggle({
-   Name = "ESP Name (Tên đỏ nổi trên đầu)",
+   Name = "ESP Name (Tên đỏ)",
    CurrentValue = false,
    Callback = function(Value)
       _G.ESP = Value
       task.spawn(function()
-          while true do
-              task.wait(1)
+          while _G.ESP do
               for _, v in pairs(game.Players:GetPlayers()) do
                   if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
-                      local head = v.Character.Head
-                      if _G.ESP then
-                          if not head:FindFirstChild("Hffiuff_ESP") then
-                              -- Tạo chữ nổi trên đầu
-                              local bgui = Instance.new("BillboardGui", head)
-                              bgui.Name = "Hffiuff_ESP"
-                              bgui.Size = UDim2.new(0, 200, 0, 50)
-                              bgui.ExtentsOffset = Vector3.new(0, 2.5, 0)
-                              bgui.AlwaysOnTop = true
-                              
-                              local text = Instance.new("TextLabel", bgui)
-                              text.Size = UDim2.new(1, 0, 1, 0)
-                              text.BackgroundTransparency = 1
-                              text.Text = "💀 " .. v.Name
-                              text.TextColor3 = Color3.fromRGB(255, 50, 50)
-                              text.TextScaled = true
-                              text.Font = Enum.Font.GothamBold
-                          end
-                      else
-                          -- Xóa ESP khi tắt
-                          if head:FindFirstChild("Hffiuff_ESP") then
-                              head.Hffiuff_ESP:Destroy()
-                          end
+                      if not v.Character.Head:FindFirstChild("Hffiuff_ESP") then
+                          local b = Instance.new("BillboardGui", v.Character.Head)
+                          b.Name = "Hffiuff_ESP"
+                          b.AlwaysOnTop = true
+                          b.Size = UDim2.new(0,100,0,30)
+                          local t = Instance.new("TextLabel", b)
+                          t.Text = v.Name
+                          t.TextColor3 = Color3.fromRGB(255,0,0)
+                          t.BackgroundTransparency = 1
+                          t.Size = UDim2.new(1,0,1,0)
                       end
                   end
               end
-              -- Dừng vòng lặp nến tắt hoàn toàn ESP (tối ưu hóa)
-              if not _G.ESP then
-                  for _, v in pairs(game.Players:GetPlayers()) do
-                      if v.Character and v.Character:FindFirstChild("Head") and v.Character.Head:FindFirstChild("Hffiuff_ESP") then
-                          v.Character.Head.Hffiuff_ESP:Destroy()
-                      end
-                  end
-                  break
-              end
+              task.wait(2)
           end
       end)
    end,
