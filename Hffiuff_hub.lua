@@ -1,51 +1,44 @@
 --[[
-    Hffiuff Hub 🗿🇻🇳 - V11 STABLE FIX
+    Hffiuff Hub 🗿🇻🇳 - V13 SUPERIOR
     Owner: khangdz by Hffiuff 🗿🇻🇳
-    Fix: Error 176, Memory Optimization, Stable Loops
+    Fix: Real Hitbox (No Ghost), Instant Kill All, Multi-Game Crate Opener
 ]]
 
--- 1. KIỂM TRA MÔI TRƯỜNG AN TOÀN
-local success, Rayfield = pcall(function()
-    return loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-end)
-
-if not success or not Rayfield then
-    warn("Hffiuff Hub: Khong the tai thu vien Rayfield!")
-    return
-end
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
    Name = "Hffiuff Hub 🗿🇻🇳",
    LoadingTitle = "khangdz by Hffiuff 🗿🇻🇳",
-   LoadingSubtitle = "V12 - Stable Edition",
+   LoadingSubtitle = "V13 - Bản Diệt Server",
    ConfigurationSaving = { Enabled = true, Folder = "HffiuffData", FileName = "Config" },
    KeySystem = false
 })
 
--- HÀM LẤY NHÂN VẬT AN TOÀN
-local function GetCharacter()
-    return game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-end
+local lp = game.Players.LocalPlayer
+local function GetCharacter() return lp.Character or lp.CharacterAdded:Wait() end
 
--- --- TAB CHIẾN ĐẤU (HITBOX 100) ---
+-- --- TAB CHIẾN ĐẤU (FIX HITBOX ẢO) ---
 local CombatTab = Window:CreateTab("Combat", 4483345998)
 
 CombatTab:CreateToggle({
-   Name = "Bật Hitbox (Real Hit)",
+   Name = "Bật Hitbox (Fix Ghost Hit)",
    CurrentValue = false,
    Callback = function(Value)
       _G.HitboxActive = Value
       task.spawn(function()
          while _G.HitboxActive do
             for _, v in pairs(game.Players:GetPlayers()) do
-               if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+               if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
                   local root = v.Character.HumanoidRootPart
-                  root.Size = Vector3.new(_G.HSize or 15, _G.HSize or 15, _G.HSize or 15)
-                  root.Transparency = 0.7
+                  -- FIX ẢO: Tăng Size vừa phải nhưng ép thuộc tính va chạm thực
+                  root.Size = Vector3.new(_G.HSize or 20, _G.HSize or 20, _G.HSize or 20)
+                  root.Transparency = 0.8 -- Không nên để quá mờ, server dễ bị lỗi ghost
                   root.CanCollide = false
+                  root.CanTouch = true -- QUAN TRỌNG: Cho phép vũ khí chạm vào
+                  root.Massless = true
                end
             end
-            task.wait(1.5) -- Tăng thời gian chờ để tránh lỗi 176
+            task.wait(0.5)
          end
       end)
    end,
@@ -53,50 +46,58 @@ CombatTab:CreateToggle({
 
 CombatTab:CreateSlider({
    Name = "Kích thước Hitbox",
-   Range = {2, 100}, -- Max 100 theo yêu cầu
+   Range = {2, 100},
    Increment = 1,
    Suffix = " Size",
-   CurrentValue = 15,
+   CurrentValue = 20,
    Callback = function(Value) _G.HSize = Value end,
 })
 
--- --- TAB AUTO KILL (QUÉT TOÀN MAP) ---
+-- --- TAB AUTO KILL (INSTANT KILL ALL) ---
 local AutoTab = Window:CreateTab("Auto Kill", 4483345998)
 
 AutoTab:CreateToggle({
-   Name = "Kill Toàn Map (Quét Server)",
+   Name = "Kill All (Một phát đi hết)",
    CurrentValue = false,
    Callback = function(Value)
-      _G.MassKill = Value
+      _G.KillAll = Value
       task.spawn(function()
-         while _G.MassKill do
-            local lp = game.Players.LocalPlayer
+         while _G.KillAll do
             local char = GetCharacter()
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                for _, v in pairs(game.Players:GetPlayers()) do
-                    if not _G.MassKill then break end
-                    if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
-                        char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if not _G.KillAll then break end
+                if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                    local eRoot = v.Character:FindFirstChild("HumanoidRootPart")
+                    if eRoot then
+                        -- Bay tới sát mục tiêu cực nhanh
+                        char.HumanoidRootPart.CFrame = eRoot.CFrame * CFrame.new(0, 0, 1)
+                        
+                        -- Lấy vũ khí và kích hoạt liên tục
                         local tool = char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
                         if tool then
-                            if tool.Parent ~= char then tool.Parent = char end
+                            tool.Parent = char
                             tool:Activate()
+                            -- Ép va chạm của Tool vào đối thủ
+                            if tool:FindFirstChild("Handle") then
+                                firetouchinterest(eRoot, tool.Handle, 0)
+                                firetouchinterest(eRoot, tool.Handle, 1)
+                            end
                         end
-                        task.wait(0.1) -- Đã chỉnh lên 0.1s để không bị văng game
+                        task.wait(0.01) -- Tốc độ bàn thờ
                     end
                 end
             end
-            task.wait(0.2)
+            task.wait(0.1)
          end
       end)
    end,
 })
 
--- --- TAB SHOP (AUTO MỞ HỘP) ---
+-- --- TAB SHOP (FIX AUTO MỞ HỘP) ---
 local ShopTab = Window:CreateTab("Shop", 4483345998)
 
 ShopTab:CreateToggle({
-   Name = "Auto Spam Mở Hộp",
+   Name = "Auto Mở Hộp (Đa dụng)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AutoOpen = Value
@@ -104,18 +105,25 @@ ShopTab:CreateToggle({
          while _G.AutoOpen do
             pcall(function()
                 local rs = game:GetService("ReplicatedStorage")
-                if rs:FindFirstChild("Remotes") and rs.Remotes:FindFirstChild("Shop") then
-                    rs.Remotes.Shop.OpenCrate:InvokeServer("Skin Crate")
+                -- Thử nhiều đường dẫn Remote khác nhau
+                if rs:FindFirstChild("Remotes") then
+                    if rs.Remotes:FindFirstChild("Shop") then
+                        rs.Remotes.Shop.OpenCrate:InvokeServer("Skin Crate")
+                    elseif rs.Remotes:FindFirstChild("OpenCrate") then
+                        rs.Remotes.OpenCrate:FireServer("Skin Crate")
+                    end
+                elseif rs:FindFirstChild("Events") and rs.Events:FindFirstChild("OpenCrate") then
+                    rs.Events.OpenCrate:FireServer()
                 end
             end)
-            task.wait(1.2)
+            task.wait(0.5)
          end
       end)
    end,
 })
 
 ShopTab:CreateLabel("----------------------------------------")
-ShopTab:CreateLabel("by developer Hffiuff 🗿🇻🇳") -- Branding
+ShopTab:CreateLabel("by developer Hffiuff 🗿🇻🇳")
 
 -- --- TAB MISC (SPAM EZ) ---
 local MiscTab = Window:CreateTab("Misc", 4483345998)
@@ -134,11 +142,11 @@ MiscTab:CreateToggle({
                     game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer("ez", "All")
                 end
             end)
-            task.wait(3)
+            task.wait(2)
          end
       end)
    end,
 })
 
 MiscTab:CreateLabel("----------------------------------------")
-MiscTab:CreateLabel("by developer Hffiuff 🗿🇻🇳") -- Branding
+MiscTab:CreateLabel("by developer Hffiuff 🗿🇻🇳")
