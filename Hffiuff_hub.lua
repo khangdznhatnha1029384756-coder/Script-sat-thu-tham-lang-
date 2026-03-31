@@ -1,40 +1,26 @@
- 
-   --[[
+--[[
     Hffiuff Hub 🗿🇻🇳
     Owner: khangdz
-    Status: Bản hoàn chỉnh - V26 Supreme
+    Status: Bản hoàn chỉnh - V27 Instant Omnipotence
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local RunService = game:GetService("RunService")
 
 local Window = Rayfield:CreateWindow({
    Name = "Hffiuff Hub 🗿🇻🇳",
    LoadingTitle = "khangdz by Hffiuff 🗿🇻🇳",
-   LoadingSubtitle = "Bản hoàn chỉnh - V26",
+   LoadingSubtitle = "Bản hoàn chỉnh - V27 Instant",
    ConfigurationSaving = { Enabled = true, Folder = "HffiuffData", FileName = "Config" },
    KeySystem = false
 })
 
 local lp = game.Players.LocalPlayer
 _G.WhitelistName = ""
-_G.OriginalPosition = nil
-_G.CustomSpamText = "Hffiuff Hub 🗿🇻🇳 - Sát phạt toàn map!"
-_G.HitboxSize = 50 -- Kích thước Hitbox riêng
+_G.CustomSpamText = "Hffiuff Hub 🗿🇻🇳 - Bay màu trong 0.00001s!"
+_G.HitboxSize = 50
 _G.HitboxActive = false
-
--- --- BỆ ĐỨNG GIỮA TRỜI ---
-local function CreatePlatform()
-    local plat = workspace:FindFirstChild("HffiuffPlatform")
-    if not plat then
-        plat = Instance.new("Part")
-        plat.Name = "HffiuffPlatform"
-        plat.Size = Vector3.new(100, 2, 100)
-        plat.Position = Vector3.new(0, 2995, 0)
-        plat.Anchored = true
-        plat.Transparency = 1
-        plat.Parent = workspace
-    end
-end
+_G.InstaKill = false
 
 -- --- TAB 1: HITBOX RIÊNG BIỆT ---
 local HitboxTab = Window:CreateTab("Hitbox Settings", 4483345998)
@@ -44,18 +30,6 @@ HitboxTab:CreateToggle({
    CurrentValue = false,
    Callback = function(Value)
       _G.HitboxActive = Value
-      task.spawn(function()
-         while _G.HitboxActive do
-            for _, v in pairs(game.Players:GetPlayers()) do
-               if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                  v.Character.HumanoidRootPart.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
-                  v.Character.HumanoidRootPart.Transparency = 0.8
-                  v.Character.HumanoidRootPart.CanTouch = true
-               end
-            end
-            task.wait(0.5)
-         end
-      end)
    end,
 })
 
@@ -68,66 +42,69 @@ HitboxTab:CreateSlider({
    Callback = function(Value) _G.HitboxSize = Value end,
 })
 
--- --- TAB 2: AUTO KILL (AURA) ---
-local KillTab = Window:CreateTab("Auto Farm", 4483345998)
+-- Vòng lặp Hitbox độc lập
+task.spawn(function()
+    while true do
+        if _G.HitboxActive then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    v.Character.HumanoidRootPart.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                    v.Character.HumanoidRootPart.Transparency = 0.8
+                    v.Character.HumanoidRootPart.CanTouch = true
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- --- TAB 2: INSTANT KILL (TỐC ĐỘ 0.00001S) ---
+local KillTab = Window:CreateTab("Instant Kill", 4483345998)
 
 KillTab:CreateToggle({
-   Name = "Bật Auto Kill (Vào trận tự chết)",
+   Name = "Bật Kill All (Siêu Tốc Độ)",
    CurrentValue = false,
    Callback = function(Value)
-      _G.AuraKill = Value
-      local char = lp.Character
-      
+      _G.InstaKill = Value
       if Value then
-          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Auto Kill đã sẵn sàng!", Duration = 3})
-          CreatePlatform()
-          if char and char:FindFirstChild("HumanoidRootPart") then
-              _G.OriginalPosition = char.HumanoidRootPart.CFrame
-          end
+          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Chế độ Sát Phạt Tức Thì đã bật!", Duration = 2})
       else
-          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã dừng sát phạt!", Duration = 2})
-          if char and char:FindFirstChild("HumanoidRootPart") and _G.OriginalPosition then
-              char.HumanoidRootPart.CFrame = _G.OriginalPosition
-          end
+          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã tắt Sát Phạt!", Duration = 2})
       end
    end,
 })
 
--- Vòng lặp Sát phạt tự động (Kết hợp Auto Equip)
-task.spawn(function()
-    while true do
-        if _G.AuraKill then
-            local char = lp.Character
-            if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and char:FindFirstChild("HumanoidRootPart") then
+-- Lõi Sát Phạt Tức Thì (Chạy theo nhịp Tim của Game)
+RunService.Stepped:Connect(function()
+    if _G.InstaKill then
+        local char = lp.Character
+        if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
+            
+            -- Tự động cầm vũ khí ngay lập tức
+            local tool = char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
+            if tool then
+                if tool.Parent ~= char then tool.Parent = char end
                 
-                -- Khóa vị trí trên cao 3000m
-                char.HumanoidRootPart.CFrame = CFrame.new(0, 3000, 0)
-                
-                -- Tự động cầm vũ khí
-                local tool = char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
-                
-                if tool then
-                    if tool.Parent ~= char then tool.Parent = char end
-                    local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("Part") or tool:FindFirstChildOfClass("MeshPart")
-                    
-                    if handle then
-                        for _, v in pairs(game.Players:GetPlayers()) do
-                            if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
-                                
-                                -- Kiểm tra Whitelist
-                                local isIgnored = false
-                                if _G.WhitelistName ~= "" then
-                                    if string.find(string.lower(v.Name), string.lower(_G.WhitelistName)) or string.find(string.lower(v.DisplayName), string.lower(_G.WhitelistName)) then
-                                        isIgnored = true
-                                    end
+                local blade = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("Part") or tool:FindFirstChildOfClass("MeshPart")
+                if blade then
+                    for _, v in pairs(game.Players:GetPlayers()) do
+                        if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                            
+                            -- Kiểm tra Whitelist
+                            local isIgnored = false
+                            if _G.WhitelistName ~= "" then
+                                if string.find(string.lower(v.Name), string.lower(_G.WhitelistName)) or string.find(string.lower(v.DisplayName), string.lower(_G.WhitelistName)) then
+                                    isIgnored = true
                                 end
-                                
-                                if not isIgnored then
-                                    local eRoot = v.Character:FindFirstChild("HumanoidRootPart")
-                                    if eRoot then
-                                        -- Chém ngầm cực mạnh
-                                        firetouchinterest(eRoot, handle, 0)
-                                        firetouchinterest(eRoot, handle, 1)
+                            end
+                            
+                            if not isIgnored then
+                                local eRoot = v.Character:FindFirstChild("HumanoidRootPart")
+                                if eRoot then
+                                    -- Gửi tín hiệu sát thương liên tục 5 lần mỗi Frame để ép chết ngay lập tức
+                                    for i = 1, 5 do
+                                        firetouchinterest(eRoot, blade, 0)
+                                        firetouchinterest(eRoot, blade, 1)
                                     end
                                 end
                             end
@@ -136,16 +113,15 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.05)
     end
 end)
 
--- --- TAB 3: HỖ TRỢ & WHITELIST ---
+-- --- TAB 3: HỖ TRỢ ---
 local SupportTab = Window:CreateTab("Support", 4483345998)
 
 SupportTab:CreateInput({
    Name = "Né người chơi (Whitelist)",
-   PlaceholderText = "Nhập tên người quen...",
+   PlaceholderText = "Nhập tên...",
    RemoveTextAfterFocusLost = false,
    Callback = function(Text) _G.WhitelistName = Text end,
 })
@@ -153,11 +129,11 @@ SupportTab:CreateInput({
 SupportTab:CreateLabel("----------------------------------------")
 SupportTab:CreateLabel("by developer Hffiuff 🗿🇻🇳")
 
--- --- TAB 4: MISC (TÙY CHỈNH SPAM) ---
+-- --- TAB 4: MISC ---
 local MiscTab = Window:CreateTab("Misc", 4483345998)
 
 MiscTab:CreateInput({
-   Name = "Nội dung Spam",
+   Name = "Nội dung Spam Chat",
    PlaceholderText = "Bạn muốn gáy gì...",
    RemoveTextAfterFocusLost = false,
    Callback = function(Text) _G.CustomSpamText = Text end,
@@ -178,7 +154,7 @@ MiscTab:CreateToggle({
                     game:GetService("ReplicatedStorage").DefaultChatSystemChatEvents.SayMessageRequest:FireServer(msg, "All")
                 end
             end)
-            task.wait(3)
+            task.wait(2) -- Giảm delay spam xuống 2s cho cháy
          end
       end)
    end,
