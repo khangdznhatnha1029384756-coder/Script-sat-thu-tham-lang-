@@ -1,7 +1,7 @@
  --[[
     Hffiuff Hub 🗿🇻🇳
     Owner: khangdz
-    Notes: Bản hoàn chỉnh - Auto Equip & Aura Kill
+    Notes: Bản hoàn chỉnh - Ultimate Hitbox Aura
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -9,7 +9,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Hffiuff Hub 🗿🇻🇳",
    LoadingTitle = "khangdz by Hffiuff 🗿🇻🇳",
-   LoadingSubtitle = "Bản hoàn chỉnh - Auto Equip",
+   LoadingSubtitle = "Bản hoàn chỉnh - Đánh Ảo",
    ConfigurationSaving = { Enabled = true, Folder = "HffiuffData", FileName = "Config" },
    KeySystem = false
 })
@@ -17,7 +17,8 @@ local Window = Rayfield:CreateWindow({
 local lp = game.Players.LocalPlayer
 _G.WhitelistName = ""
 _G.OriginalPosition = nil
-_G.CustomSpamText = "Hffiuff Hub 🗿🇻🇳 - Tự động sát phạt!"
+_G.CustomSpamText = "Hffiuff Hub 🗿🇻🇳 - Sát phạt toàn map!"
+_G.HitboxSize = 2048 -- Mặc định cực đại để đánh ảo
 
 -- --- BỆ ĐỨNG GIỮA TRỜI ---
 local function CreatePlatform()
@@ -33,55 +34,68 @@ local function CreatePlatform()
     end
 end
 
--- --- TAB CHIẾN ĐẤU ---
+-- --- TAB CHIẾN ĐẤU (CHÉM ẢO + HITBOX) ---
 local CombatTab = Window:CreateTab("Combat", 4483345998)
 
 CombatTab:CreateToggle({
-   Name = "Bật Auto Farm (Aura + Auto Equip)",
+   Name = "Bật Đánh Ảo (Aura + Max Hitbox)",
    CurrentValue = false,
    Callback = function(Value)
       _G.AuraKill = Value
       local char = lp.Character
       
       if Value then
-          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã bật! Script sẽ tự cầm kiếm và farm.", Duration = 3})
+          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã bật Đánh Ảo cực đại!", Duration = 3})
           CreatePlatform()
           if char and char:FindFirstChild("HumanoidRootPart") then
               _G.OriginalPosition = char.HumanoidRootPart.CFrame
           end
       else
-          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã tắt Auto Farm!", Duration = 2})
+          Rayfield:Notify({Title = "Hffiuff Hub 🗿🇻🇳", Content = "Đã tắt!", Duration = 2})
           if char and char:FindFirstChild("HumanoidRootPart") and _G.OriginalPosition then
               char.HumanoidRootPart.CFrame = _G.OriginalPosition
+          end
+          -- Reset Hitbox về bình thường khi tắt
+          for _, v in pairs(game.Players:GetPlayers()) do
+              if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                  v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+              end
           end
       end
    end,
 })
 
--- Vòng lặp chính: Tự cầm kiếm + Bay lên cao + Chém ảo
+CombatTab:CreateSlider({
+   Name = "Phạm vi Đánh Ảo",
+   Range = {2, 2048},
+   Increment = 1,
+   Suffix = " Size",
+   CurrentValue = 2048,
+   Callback = function(Value) _G.HitboxSize = Value end,
+})
+
+-- Vòng lặp: Tự cầm kiếm + Phóng to Hitbox + Sát phạt ngầm
 task.spawn(function()
     while true do
         if _G.AuraKill then
             local char = lp.Character
             if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 and char:FindFirstChild("HumanoidRootPart") then
                 
-                -- Khóa vị trí an toàn trên cao
+                -- Giữ vị trí trên cao
                 char.HumanoidRootPart.CFrame = CFrame.new(0, 3000, 0)
                 
-                -- TỰ ĐỘNG CẦM KIẾM (Auto Equip)
+                -- Tự cầm vũ khí
                 local tool = char:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChildOfClass("Tool")
                 
                 if tool then
-                    if tool.Parent ~= char then
-                        tool.Parent = char -- Lôi kiếm từ túi ra tay
-                    end
-                    
+                    if tool.Parent ~= char then tool.Parent = char end
                     local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildOfClass("Part")
+                    
                     if handle then
                         for _, v in pairs(game.Players:GetPlayers()) do
                             if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
                                 
-                                -- Kiểm tra Né người chơi (Whitelist)
+                                -- Kiểm tra Whitelist
                                 local isIgnored = false
                                 if _G.WhitelistName ~= "" then
                                     if string.find(string.lower(v.Name), string.lower(_G.WhitelistName)) or string.find(string.lower(v.DisplayName), string.lower(_G.WhitelistName)) then
@@ -92,7 +106,12 @@ task.spawn(function()
                                 if not isIgnored then
                                     local eRoot = v.Character:FindFirstChild("HumanoidRootPart")
                                     if eRoot then
-                                        -- Chém ảo liên tục toàn map
+                                        -- BƯỚC QUAN TRỌNG: Phóng to hitbox để chém ảo dính 100%
+                                        eRoot.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize)
+                                        eRoot.Transparency = 0.9 -- Gần như tàng hình để không lag
+                                        eRoot.CanTouch = true
+                                        
+                                        -- Sát phạt thụ động
                                         firetouchinterest(eRoot, handle, 0)
                                         firetouchinterest(eRoot, handle, 1)
                                     end
@@ -103,7 +122,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.1) -- Tốc độ quét 10 lần/giây
+        task.wait(0.1)
     end
 end)
 
@@ -124,8 +143,8 @@ SupportTab:CreateLabel("by developer Hffiuff 🗿🇻🇳")
 local MiscTab = Window:CreateTab("Misc", 4483345998)
 
 MiscTab:CreateInput({
-   Name = "Nội dung Spam Chat",
-   PlaceholderText = "Gõ gì đó để khịa...",
+   Name = "Nội dung Spam",
+   PlaceholderText = "Nhập câu gáy...",
    RemoveTextAfterFocusLost = false,
    Callback = function(Text) _G.CustomSpamText = Text end,
 })
